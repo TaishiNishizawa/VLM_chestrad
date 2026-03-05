@@ -1,0 +1,45 @@
+# Core
+torch>=2.1.0
+torchvision>=0.16.0
+torchaudio>=2.1.0
+
+# HuggingFace ecosystem (BioMedCLIP, MedGemma, LLaMA)
+transformers>=4.38.0
+accelerate>=0.27.0
+datasets>=2.17.0
+huggingface_hub>=0.20.0
+sentencepiece>=0.1.99
+
+# BioMedCLIP dependency
+open_clip_torch>=2.24.0
+
+
+# Data + numerics
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
+
+# Image processing
+pillow>=10.0.0
+opencv-python>=4.8.0
+
+# Text processing
+nltk>=3.8.1
+tqdm>=4.66.0
+
+# Metrics
+scikit-learn>=1.3.0
+
+# Configs / utilities
+pyyaml>=6.0.0
+
+# Optional but recommended (faster dataframe / json handling)
+orjson>=3.9.0
+
+# Visualization (optional but useful)
+matplotlib>=3.7.0
+seaborn>=0.13.0
+
+# Jupyter (optional)
+ipykernel>=6.29.0
+jupyter>=1.0.0

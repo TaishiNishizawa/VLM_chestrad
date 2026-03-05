@@ -1,0 +1,58 @@
+#!/bin/bash
+#SBATCH -J biomed_embeddings
+#SBATCH -p gpu
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=12
+#SBATCH --mem=32G
+#SBATCH --time=5:00:00
+#SBATCH --output=slurm/logs/biomed_embeddings/%x_%j.out
+#SBATCH --error=slurm/logs/biomed_embeddings/%x_%j.out
+#SBATCH --chdir=/gs/gsfs0/shared-lab/duong-lab/VLM_graphrag
+
+set -euo pipefail
+mkdir -p slurm/logs/biomed_embeddings
+
+echo "[$(date)] Job $SLURM_JOB_ID on $(hostname)"
+echo "CWD=$(pwd)"
+echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset}"
+nvidia-smi || true
+
+# -------- environment --------
+module load cuda/12.1
+source /gs/gsfs0/hpc01/rhel8/apps/conda3/etc/profile.d/conda.sh
+conda activate mimicvlm
+
+# optional: keep python prints streaming into slurm log
+export PYTHONUNBUFFERED=1
+
+# dataloader tuning
+# export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+# export MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+
+# quick sanity: confirm package import path (should point into your repo src/)
+python - <<'PY'
+import mimicvlm, os
+print("mimicvlm:", mimicvlm.__file__)
+print("cwd:", os.getcwd())
+PY
+
+# -------- run naming / outputs --------
+RUN_ID=${SLURM_JOB_ID}
+EXP_NAME=biomed_embeddings
+OUT_DIR="artifacts/embeddings/biomedclip_single"
+mkdir -p "$OUT_DIR"
+
+python scripts/02_precompute_biomedclip_embeddings.py \
+  --mimic_cxr_jpg_root "/gs/gsfs0/shared-lab/duong-lab/MIMIC" \
+  --split train \
+  --out_dir "$OUT_DIR" \
+  --batch_size 128 \
+  --num_workers 8 \
+  --amp\
+  --shard_size 100000000
+
+echo "[$(date)] Done."

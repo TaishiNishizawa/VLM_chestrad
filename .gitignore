@@ -1,0 +1,25 @@
+### Project artifacts (checkpoints, embeddings, logs)
+artifacts/
+logs/
+slurm/logs/
+
+### Python caches / compiled files
+__pycache__/
+*.py[cod]
+*.pyo
+
+### Build / packaging metadata
+*.egg-info/
+*.egg
+dist/
+build/
+
+### Notebook checkpoints
+.ipynb_checkpoints/
+
+### Editor / OS cruft
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
