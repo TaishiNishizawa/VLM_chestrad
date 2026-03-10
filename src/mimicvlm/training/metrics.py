@@ -9,15 +9,16 @@ import numpy as np
 def sigmoid(x: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-x))
 
-
 @dataclass
 class MultiLabelMetrics:
     per_label_f1: np.ndarray
     per_label_precision: np.ndarray
     per_label_recall: np.ndarray
+    per_label_accuracy: np.ndarray
     macro_f1: float
     macro_precision: float
     macro_recall: float
+    macro_accuracy: float
     per_label_auroc: Optional[np.ndarray] = None
     macro_auroc: Optional[float] = None
 
@@ -50,6 +51,7 @@ def compute_multilabel_metrics(
     precisions = np.zeros(C, dtype=np.float64)
     recalls = np.zeros(C, dtype=np.float64)
     f1s = np.zeros(C, dtype=np.float64)
+    accuracies = np.zeros(C, dtype=np.float64)
 
     for c in range(C):
         m = mask[:, c]
@@ -65,7 +67,9 @@ def compute_multilabel_metrics(
         tp = np.sum((p == 1) & (y == 1))
         fp = np.sum((p == 1) & (y == 0))
         fn = np.sum((p == 0) & (y == 1))
+        tn = np.sum((p == 0) & (y == 0))
 
+        
         prec = tp / max(tp + fp, 1e-12)
         rec = tp / max(tp + fn, 1e-12)
         f1 = (2 * prec * rec) / max(prec + rec, 1e-12)
@@ -73,10 +77,12 @@ def compute_multilabel_metrics(
         precisions[c] = prec
         recalls[c] = rec
         f1s[c] = f1
+        accuracies[c] = (tp + tn) / len(y)
 
     macro_precision = float(np.nanmean(precisions))
     macro_recall = float(np.nanmean(recalls))
     macro_f1 = float(np.nanmean(f1s))
+    macro_accuracy = float(np.nanmean(accuracies))
 
     per_label_auroc = None
     macro_auroc = None
@@ -106,10 +112,12 @@ def compute_multilabel_metrics(
         per_label_f1=f1s,
         per_label_precision=precisions,
         per_label_recall=recalls,
+        per_label_accuracy=accuracies,
+        per_label_auroc=per_label_auroc,
         macro_f1=macro_f1,
         macro_precision=macro_precision,
         macro_recall=macro_recall,
-        per_label_auroc=per_label_auroc,
+        macro_accuracy=macro_accuracy,
         macro_auroc=macro_auroc,
     )
 
@@ -119,26 +127,41 @@ def log_per_label_metrics(
 ) -> None:
     """Pretty-print per-label breakdown. Call once after final eval, not every epoch."""
     C = len(label_names)
-    print(f"\n{'Label':35s} {'AUROC':>7} {'F1':>7} {'Prec':>7} {'Recall':>7}")
-    print("-" * 65)
-    
+    has_auroc = metrics.per_label_auroc is not None
+
+    if has_auroc:
+        print(f"\n{'Label':35s} {'AUROC':>7} {'F1':>7} {'Prec':>7} {'Recall':>7} {'Acc':>7}")
+        print("-" * 73)
+    else:
+        print(f"\n{'Label':35s} {'F1':>7} {'Prec':>7} {'Recall':>7} {'Acc':>7}")
+        print("-" * 65)
+
     valid_auroc = 0
     for c in range(C):
-        auroc = metrics.per_label_auroc[c] if metrics.per_label_auroc is not None else np.nan
-        f1    = metrics.per_label_f1[c]
-        prec  = metrics.per_label_precision[c]
-        rec   = metrics.per_label_recall[c]
-        
-        auroc_str = f"{auroc:.4f}" if not np.isnan(auroc) else "SKIPPED"
-        if not np.isnan(auroc):
-            valid_auroc += 1
-        
-        print(f"{label_names[c]:35s} {auroc_str:>7} {f1:>7.4f} {prec:>7.4f} {rec:>7.4f}")
-    
-    print("-" * 65)
-    print(f"{'MACRO':35s} {metrics.macro_auroc:>7.4f} {metrics.macro_f1:>7.4f} "
-          f"{metrics.macro_precision:>7.4f} {metrics.macro_recall:>7.4f}")
-    print(f"\nAUROC computed over {valid_auroc}/{C} labels")
+        f1   = metrics.per_label_f1[c]
+        prec = metrics.per_label_precision[c]
+        rec  = metrics.per_label_recall[c]
+        acc  = metrics.per_label_accuracy[c]
+
+        if has_auroc:
+            auroc = metrics.per_label_auroc[c]
+            auroc_str = f"{auroc:.4f}" if not np.isnan(auroc) else "SKIPPED"
+            if not np.isnan(auroc):
+                valid_auroc += 1
+            print(f"{label_names[c]:35s} {auroc_str:>7} {f1:>7.4f} {prec:>7.4f} {rec:>7.4f} {acc:>7.4f}")
+        else:
+            print(f"{label_names[c]:35s} {f1:>7.4f} {prec:>7.4f} {rec:>7.4f} {acc:>7.4f}")
+
+    if has_auroc:
+        print("-" * 73)
+        macro_auroc_str = f"{metrics.macro_auroc:.4f}" if metrics.macro_auroc is not None else "   N/A"
+        print(f"{'MACRO':35s} {macro_auroc_str:>7} {metrics.macro_f1:>7.4f} "
+              f"{metrics.macro_precision:>7.4f} {metrics.macro_recall:>7.4f} {metrics.macro_accuracy:>7.4f}")
+        print(f"\nAUROC computed over {valid_auroc}/{C} labels")
+    else:
+        print("-" * 65)
+        print(f"{'MACRO':35s} {metrics.macro_f1:>7.4f} "
+              f"{metrics.macro_precision:>7.4f} {metrics.macro_recall:>7.4f} {metrics.macro_accuracy:>7.4f}")
 
 
 

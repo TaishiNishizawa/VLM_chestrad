@@ -1,16 +1,16 @@
 #!/bin/bash
-#SBATCH -J train_head
+#SBATCH -J check_alignment
 #SBATCH -p gpu
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=32G
 #SBATCH --time=10:00:00
-#SBATCH --output=slurm/logs/train_head/%x_%j.out
-#SBATCH --error=slurm/logs/train_head/%x_%j.out
+#SBATCH --output=slurm/logs/check_alignment/%x_%j.out
+#SBATCH --error=slurm/logs/check_alignment/%x_%j.out
 #SBATCH --chdir=/gs/gsfs0/shared-lab/duong-lab/VLM_graphrag
 
 set -euo pipefail
-mkdir -p slurm/logs/train_head
+mkdir -p slurm/logs/check_alignment
 
 echo "[$(date)] Job $SLURM_JOB_ID on $(hostname)"
 echo "CWD=$(pwd)"
@@ -42,21 +42,11 @@ PY
 
 # -------- run naming / outputs --------
 RUN_ID=${SLURM_JOB_ID}
-EXP_NAME=biomedclip_mlp
-SAVE_DIR="artifacts/checkpoints/${EXP_NAME}/${RUN_ID}"
+SAVE_DIR="artifacts/check_alignment/${RUN_ID}"
 mkdir -p "$SAVE_DIR"
 
-python -u scripts/01_train_biomedclip_mlp.py \
-  --use_cached_embeddings \
-  --embeddings_dir "artifacts/embeddings/biomedclip" \
-  --batch_size 1024 \
-  --num_workers 8 \
-  --epochs 50 \
-  --lr 1e-3 \
-  --num_layers 2 \
-  --dropout 0.1 \
-  --hidden_dim 512 \
-  --save_dir "$SAVE_DIR" \
-  --mimic_cxr_jpg_root "/gs/gsfs0/shared-lab/duong-lab/MIMIC"
-
+python -u scripts/check_alignment.py \
+  --mimic_cxr_jpg_root "/gs/gsfs0/shared-lab/duong-lab/MIMIC" \
+  --embedding_dir "artifacts/embeddings/biomedclip" \
+  --save_dir "$SAVE_DIR"
 echo "[$(date)] Done."

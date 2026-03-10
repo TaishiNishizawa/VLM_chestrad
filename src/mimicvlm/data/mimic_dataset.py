@@ -134,3 +134,21 @@ def collate_skip_none(batch):
     if len(batch) == 0:
         return None
     return torch.utils.data.dataloader.default_collate(batch)
+
+
+def collate_pil(batch):
+    """
+    Like collate_skip_none but keeps images as list[PIL.Image].
+    Use with MedGemma and any model that expects PIL input.
+    Returns:
+        images: list[PIL.Image]
+        targets: (B, 14) tensor
+        study_ids: list[str]
+    """
+    batch = [x for x in batch if x is not None]
+    if len(batch) == 0:
+        return None
+    images    = [x[0] for x in batch]               # list[PIL.Image]
+    targets   = torch.stack([x[1] for x in batch])  # (B, 14)
+    study_ids = [str(x[2]["study_id"]) for x in batch]
+    return images, targets, study_ids

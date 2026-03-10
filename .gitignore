@@ -2,6 +2,7 @@
 artifacts/
 logs/
 slurm/logs/
+MIMIC.code-workspace
 
 ### Python caches / compiled files
 __pycache__/

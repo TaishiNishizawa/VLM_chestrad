@@ -43,12 +43,12 @@ PY
 # -------- run naming / outputs --------
 RUN_ID=${SLURM_JOB_ID}
 EXP_NAME=biomed_embeddings
-OUT_DIR="artifacts/embeddings/biomedclip_single"
+OUT_DIR="artifacts/embeddings/biomedclip"
 mkdir -p "$OUT_DIR"
 
 python scripts/02_precompute_biomedclip_embeddings.py \
   --mimic_cxr_jpg_root "/gs/gsfs0/shared-lab/duong-lab/MIMIC" \
-  --split train \
+  --split test \
   --out_dir "$OUT_DIR" \
   --batch_size 128 \
   --num_workers 8 \

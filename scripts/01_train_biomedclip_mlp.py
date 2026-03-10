@@ -316,7 +316,11 @@ def main():
 
     print("Tuning F1 thresholds on validation set...")
     # Tune threshold on val set
-    tuned_threshold = tune_threshold_on_val(head, val_dataloader, device)
+    tuned_threshold = tune_threshold_on_val(
+        head=head,
+        dataloader=val_dataloader,
+        device=device,
+    )
     for name, t in zip(CHEXPERT_LABELS_14, tuned_threshold):
         print(f"  {name:35s} threshold={t:.2f}")
     
