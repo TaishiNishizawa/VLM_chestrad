@@ -125,7 +125,7 @@ class MimicCXRDataset(Dataset):
             img = torch.from_numpy(np.array(img)).permute(2, 0, 1).float() / 255.0
 
         y = torch.from_numpy(targets).float()
-        meta = {"subject_id": subject_id, "study_id": study_id, "image_path": str(image_path)}
+        meta = {"subject_id": subject_id, "study_id": study_id, "dicom_id": dicom_id, "image_path": str(image_path)}
         return img, y, meta
 
 
@@ -152,3 +152,20 @@ def collate_pil(batch):
     targets   = torch.stack([x[1] for x in batch])  # (B, 14)
     study_ids = [str(x[2]["study_id"]) for x in batch]
     return images, targets, study_ids
+
+def collate_pil_2(batch):
+    """
+    Like collate_skip_none but keeps images as list[PIL.Image].
+    Use with MedGemma and any model that expects PIL input.
+    Returns:
+        images: list[PIL.Image]
+        targets: (B, 14) tensor
+        image_keys: list[tuple[int, int, str]]  — (subject_id, study_id, dicom_id)
+    """
+    batch = [x for x in batch if x is not None]
+    if len(batch) == 0:
+        return None
+    images     = [x[0] for x in batch]
+    targets    = torch.stack([x[1] for x in batch])
+    image_keys = [(x[2]["subject_id"], x[2]["study_id"], x[2]["dicom_id"]) for x in batch]
+    return images, targets, image_keys

@@ -1,16 +1,16 @@
 #!/bin/bash
-#SBATCH -J text-rag_medgemma
+#SBATCH -J radgraph_eval
 #SBATCH -p gpu
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=32G
-#SBATCH --time=10:00:00
-#SBATCH --output=slurm/logs/text-rag_medgemma/%x_%j.out
-#SBATCH --error=slurm/logs/text-rag_medgemma/%x_%j.out
+#SBATCH --time=01:00:00
+#SBATCH --output=slurm/logs/radgraph_eval/%x_%j.out
+#SBATCH --error=slurm/logs/radgraph_eval/%x_%j.out
 #SBATCH --chdir=/gs/gsfs0/shared-lab/duong-lab/VLM_graphrag
 
 set -euo pipefail
-mkdir -p slurm/logs/text-rag_medgemma
+mkdir -p slurm/logs/radgraph_eval
 
 echo "[$(date)] Job $SLURM_JOB_ID on $(hostname)"
 echo "CWD=$(pwd)"
@@ -20,7 +20,7 @@ nvidia-smi || true
 # -------- environment --------
 module load cuda/12.1
 source /gs/gsfs0/hpc01/rhel8/apps/conda3/etc/profile.d/conda.sh
-conda activate mimicvlm
+conda activate radgraph_eval
 
 # optional: keep python prints streaming into slurm log
 export PYTHONUNBUFFERED=1
@@ -34,21 +34,14 @@ export OPENBLAS_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 
 # quick sanity: confirm package import path (should point into your repo src/)
-python - <<'PY'
-import mimicvlm, os
-print("mimicvlm:", mimicvlm.__file__)
-print("cwd:", os.getcwd())
-PY
 
 # -------- run naming / outputs --------
 RUN_ID=${SLURM_JOB_ID}
-SAVE_DIR="artifacts/text-rag_medgemma/${RUN_ID}"
+SAVE_DIR="artifacts/radgraph_eval/${RUN_ID}"
 mkdir -p "$SAVE_DIR"
 
-python -u scripts/04_textrag_medgemma.py \
-  --mimic_cxr_jpg_root "/gs/gsfs0/shared-lab/duong-lab/MIMIC" \
-  --biomedclip_embedding_dir "artifacts/embeddings/biomedclip" \
-  --split "test" \
-  --num_workers 8 \
-  --save_dir "$SAVE_DIR"
+python -u scripts/radgraph_eval_script.py \
+    --generated artifacts/report_gen_zeroshot/25764768/k3/generated_reports.json \
+    --mimic_root "/gs/gsfs0/shared-lab/duong-lab/MIMIC" \
+    --save_dir "$SAVE_DIR" 
 echo "[$(date)] Done."

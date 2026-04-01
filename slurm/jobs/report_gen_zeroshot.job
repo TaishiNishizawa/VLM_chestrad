@@ -1,16 +1,16 @@
 #!/bin/bash
-#SBATCH -J text-rag_medgemma
+#SBATCH -J report_gen_zeroshot
 #SBATCH -p gpu
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=32G
-#SBATCH --time=10:00:00
-#SBATCH --output=slurm/logs/text-rag_medgemma/%x_%j.out
-#SBATCH --error=slurm/logs/text-rag_medgemma/%x_%j.out
+#SBATCH --time=03:00:00
+#SBATCH --output=slurm/logs/report_gen_zeroshot/%x_%j.out
+#SBATCH --error=slurm/logs/report_gen_zeroshot/%x_%j.out
 #SBATCH --chdir=/gs/gsfs0/shared-lab/duong-lab/VLM_graphrag
 
 set -euo pipefail
-mkdir -p slurm/logs/text-rag_medgemma
+mkdir -p slurm/logs/report_gen_zeroshot
 
 echo "[$(date)] Job $SLURM_JOB_ID on $(hostname)"
 echo "CWD=$(pwd)"
@@ -42,13 +42,14 @@ PY
 
 # -------- run naming / outputs --------
 RUN_ID=${SLURM_JOB_ID}
-SAVE_DIR="artifacts/text-rag_medgemma/${RUN_ID}"
+SAVE_DIR="artifacts/report_gen_zeroshot/${RUN_ID}"
 mkdir -p "$SAVE_DIR"
 
-python -u scripts/04_textrag_medgemma.py \
+python -u scripts/10A_zeroshot_report_generation.py \
   --mimic_cxr_jpg_root "/gs/gsfs0/shared-lab/duong-lab/MIMIC" \
   --biomedclip_embedding_dir "artifacts/embeddings/biomedclip" \
   --split "test" \
   --num_workers 8 \
-  --save_dir "$SAVE_DIR"
+  --save_dir "$SAVE_DIR" \
+  --max_new_tokens 512
 echo "[$(date)] Done."

@@ -31,6 +31,8 @@ def parse_args():
     ap.add_argument("--max_new_tokens", type=int, default=256)
     ap.add_argument("--limit",     type=int, default=None)
     ap.add_argument("--batch_size", type=int, default=10)
+    ap.add_argument("--check_rag", action="store_true",
+                    help="Run a quick check of RAG retrieval + prompting without saving results")
     return ap.parse_args()
 
 
@@ -51,19 +53,8 @@ def main():
     )
     train_embedding_ds = EmbeddingShardDataset(f"{args.biomedclip_embedding_dir}/train")
 
-    embedded_dicoms = set(train_embedding_ds.dicom_ids)
-    valid_indices = [
-        i for i, d in enumerate(train_dataset.dicom_ids)
-        if d in embedded_dicoms
-    ]
-    # Filter image_dataset to only the dicom_ids present in the embedding shards
-    train_dataset_filtered = torch.utils.data.Subset(train_dataset, valid_indices)
-    print(f"  Train Image dataset: {len(train_dataset)} → {len(train_dataset_filtered)} after filtering bad images")
-    print(f"  Embedding dataset: {len(train_embedding_ds)}")
-    assert len(train_dataset_filtered) == len(train_embedding_ds), "Still misaligned after filtering!"
-   
     print("Building FAISS index from train embeddings...")
-    index = EmbeddingIndex.from_shard_dir(train_dataset_filtered, train_embedding_ds)
+    index = EmbeddingIndex.from_shard_dir(train_dataset, train_embedding_ds)
     print(f"  Index size: {index.index.ntotal} vectors, dim={index.dim}")
 
     report_store = ReportStore(args.mimic_cxr_jpg_root)
@@ -78,9 +69,18 @@ def main():
     embedding_dataset = EmbeddingShardDataset(
         os.path.join(args.biomedclip_embedding_dir, args.split)  
     )    
-    
+    # Filter image_dataset to only the dicom_ids present in the embedding shards
     assert embedding_dataset.dicom_ids is not None, "Shards missing meta — rerun precompute"
-    assert len(image_dataset) == len(embedding_dataset), "Image and EmbeddingShardDataset Mismatched!"
+    embedded_dicoms = set(embedding_dataset.dicom_ids)
+    valid_indices = [
+        i for i, d in enumerate(image_dataset.dicom_ids)
+        if d in embedded_dicoms
+    ]
+    image_dataset_filtered = torch.utils.data.Subset(image_dataset, valid_indices)
+
+    print(f"  Image dataset: {len(image_dataset)} → {len(image_dataset_filtered)} after filtering bad images")
+    print(f"  Embedding dataset: {len(embedding_dataset)}")
+    assert len(image_dataset_filtered) == len(embedding_dataset), "Still misaligned after filtering!"
 
     if args.limit:
         image_dataset = torch.utils.data.Subset(image_dataset, range(args.limit))
@@ -105,24 +105,25 @@ def main():
 
     print("Loading MedGemma...")
     medGemma = MedGemma(device=device)
-    print("Running RAG inference...")
-
-    for k in [1, 3, 5, 10]:  
-        check_rag(
+    if args.check_rag:
+        print("Running quick RAG check with k=1,3,5,10...")
+        for k in [1, 3, 5, 10]:  
+            check_rag(
+                model=medGemma, 
+                index=index, 
+                report_store=report_store, 
+                image_dataloader=image_dataloader, 
+                embedding_dataloader=embedding_dataloader, 
+                k=k)
+    else:
+        print("Running RAG inference...")
+        run_rag(
             model=medGemma, 
             index=index, 
             report_store=report_store, 
             image_dataloader=image_dataloader, 
             embedding_dataloader=embedding_dataloader, 
-            k=k)
-    return
-    run_rag(
-        model=medGemma, 
-        index=index, 
-        report_store=report_store, 
-        image_dataloader=image_dataloader, 
-        embedding_dataloader=embedding_dataloader, 
-        k=args.k, max_new_tokens=args.max_new_tokens)
+            k=args.k, max_new_tokens=args.max_new_tokens)
     # preds, targets, study_ids, n_failed, n_missing = run_rag(
     #     model=model,
     #     encoder=encoder,

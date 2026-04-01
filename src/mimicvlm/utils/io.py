@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Union
 import csv
 import pandas as pd
-
+import torch 
 
 PathLike = Union[str, Path]
 
@@ -75,3 +75,7 @@ def append_row_csv(path: Path, row: dict):
         if not file_exists:
             writer.writeheader()
         writer.writerow(row)
+
+
+def to_device(x: torch.Tensor, device: torch.device) -> torch.Tensor:
+    return x.to(device, non_blocking=True)

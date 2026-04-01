@@ -69,7 +69,6 @@ def main():
             drop_last=True,
             persistent_workers=True,
         )
-
         val_dataloader = DataLoader(
             val_ds,
             batch_size=512,
@@ -172,8 +171,19 @@ def main():
         dropout=args.dropout,
     ).to(device)
 
-    pos_weight = torch.tensor(args.pos_weight, device=device)
-    criterion = MultiLabelBCEWithLogits(BCEWithLogitsConfig(pos_weight=pos_weight))
+    if args.use_cached_embeddings:
+        train_labels = train_ds.y
+        # calculate positives per label
+        pos_counts = train_labels.sum(0)   
+        neg_counts = train_labels.shape[0] - pos_counts
+        print("Positive counts per label in training set:", pos_counts.tolist())
+        print("Negative counts per label in training set:", neg_counts.tolist())
+        pos_ratio = pos_counts / (pos_counts + neg_counts)
+        print("Positive ratio per label:", [round(x, 2) for x in pos_ratio.tolist()])
+        pos_weight = torch.tensor(neg_counts / pos_counts, device=device)
+    else: 
+        pos_weight = torch.tensor(args.pos_weight, device=device)
+    criterion = MultiLabelBCEWithLogits(BCEWithLogitsConfig(pos_weight=pos_weight)).to(device)
     optimizer = torch.optim.AdamW(head.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=1e-5)
     # --- Train
@@ -310,7 +320,8 @@ def main():
 
     print("------Test Dataset Performance...")
     head = MLPHead(in_dim=in_dim, out_dim=14, hidden_dim=args.hidden_dim, num_layers=args.num_layers, dropout=args.dropout)
-    head.load_state_dict(torch.load(best_path, weights_only=True)["head_state_dict"])
+    ckpt = torch.load(best_path, weights_only=True)
+    head.load_state_dict(ckpt["head_state_dict"])
     head.to(device)
     head.eval()
 
@@ -323,7 +334,10 @@ def main():
     )
     for name, t in zip(CHEXPERT_LABELS_14, tuned_threshold):
         print(f"  {name:35s} threshold={t:.2f}")
-    
+    ckpt["tuned_thresholds"] = tuned_threshold          # list or np.ndarray, both serialize fine
+    ckpt["threshold_labels"] = list(CHEXPERT_LABELS_14) 
+    torch.save(ckpt, best_path)
+
     if args.use_cached_embeddings:
         test_result_default = evaluate_head_only(
             head=head,

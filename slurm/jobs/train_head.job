@@ -51,9 +51,9 @@ python -u scripts/01_train_biomedclip_mlp.py \
   --embeddings_dir "artifacts/embeddings/biomedclip" \
   --batch_size 1024 \
   --num_workers 8 \
-  --epochs 50 \
+  --epochs 200 \
   --lr 1e-3 \
-  --num_layers 2 \
+  --num_layers 3 \
   --dropout 0.1 \
   --hidden_dim 512 \
   --save_dir "$SAVE_DIR" \
