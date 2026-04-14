@@ -4,7 +4,7 @@
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=32G
-#SBATCH --time=01:00:00
+#SBATCH --time=05:00:00
 #SBATCH --output=slurm/logs/radgraph_eval/%x_%j.out
 #SBATCH --error=slurm/logs/radgraph_eval/%x_%j.out
 #SBATCH --chdir=/gs/gsfs0/shared-lab/duong-lab/VLM_graphrag
@@ -37,11 +37,17 @@ export NUMEXPR_NUM_THREADS=1
 
 # -------- run naming / outputs --------
 RUN_ID=${SLURM_JOB_ID}
-SAVE_DIR="artifacts/radgraph_eval/${RUN_ID}"
+SAVE_DIR="artifacts/radgraph_eval/labels_report_gen/${RUN_ID}"
 mkdir -p "$SAVE_DIR"
 
 python -u scripts/radgraph_eval_script.py \
-    --generated artifacts/report_gen_zeroshot/25764768/k3/generated_reports.json \
+    --generated artifacts/labels_report_gen/25769760/k3/generated_reports.json \
     --mimic_root "/gs/gsfs0/shared-lab/duong-lab/MIMIC" \
     --save_dir "$SAVE_DIR" 
 echo "[$(date)] Done."
+
+# k=100 --generated artifacts/report_gen_zeroshot/25764752/k3/generated_reports.json
+# --generated artifacts/report_gen_zeroshot/25781840/k3/generated_reports.json \
+# --generated artifacts/text_rag_report_gen/26173587/k3/generated_reports.json \
+# --generated artifacts/labels_report_gen/25769760/k3/generated_reports.json \
+# --generated artifacts/graph_rag_report_gen/26237805/k3_g3/generated_reports.json \

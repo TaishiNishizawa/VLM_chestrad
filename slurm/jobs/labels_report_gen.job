@@ -51,5 +51,6 @@ python -u scripts/11_labels_report_generation.py \
   --split "test" \
   --num_workers 8 \
   --save_dir "$SAVE_DIR" \
-  --max_new_tokens 512
+  --max_new_tokens 512 \
+  --limit 1000
 echo "[$(date)] Done."

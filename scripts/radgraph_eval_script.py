@@ -4,7 +4,7 @@ import json
 import argparse
 from pathlib import Path
 from radgraph import F1RadGraph
-
+import os
 
 def evaluate_reports(
     generated_path: str | Path,
@@ -30,6 +30,7 @@ def evaluate_reports(
     generated_reports = []
     ground_truth_reports = []
     keys_collected = []
+    total = len(generated)
 
     for key, gen_report in generated.items():
         subject_id, study_id, dicom_id = key.split("_", 2)
@@ -45,18 +46,21 @@ def evaluate_reports(
         ground_truth_reports.append(ground_truth)
         keys_collected.append(key)
 
+
     assert len(generated_reports) == len(ground_truth_reports)
     print(f"Evaluating {len(generated_reports)} reports...")
 
-    f1_radgraph = F1RadGraph(reward_level=reward_level, model_type="radgraph-xl")
-    mean_reward, reward_list, hypothesis_annotation_lists, reference_annotation_lists = f1_radgraph(refs=ground_truth_reports, hyps=generated_reports)
-    rg_e, rg_er, rg_bar_er = mean_reward
+    f1_radgraph = F1RadGraph(reward_level="partial", model_type="radgraph")
+    mean_reward, reward_list, hypothesis_annotation_lists, reference_annotation_lists = f1_radgraph(
+        refs=ground_truth_reports, 
+        hyps=generated_reports
+    )
 
     return {
-        "mean_radgraph_f1": float(rg_er),
+        "mean_radgraph_f1": float(mean_reward),
         "per_study_scores": {
             key: float(score)
-            for key, score in zip(keys_collected, hypothesis_scores)
+            for key, score in zip(keys_collected, reward_list)
         },
         "n_evaluated": len(keys_collected),
         "n_skipped": len(generated) - len(keys_collected),
@@ -68,7 +72,7 @@ if __name__ == "__main__":
     parser.add_argument("--generated",    required=True, help="Path to generated reports JSON")
     parser.add_argument("--mimic_root",   required=True, help="Root directory of MIMIC-CXR dataset")
     parser.add_argument("--save_dir",     required=True, help="Directory to save results JSON")
-    parser.add_argument("--reward_level", default="partial", choices=["partial", "complete"])
+    parser.add_argument("--reward_level", default="all", choices=["partial", "all"])
     args = parser.parse_args()
 
     results = evaluate_reports(args.generated, args.mimic_root, args.reward_level)
@@ -77,6 +81,8 @@ if __name__ == "__main__":
     print(f"Evaluated:   {results['n_evaluated']} studies")
     print(f"Skipped:     {results['n_skipped']} studies")
 
-    with open(args.output, "w") as f:
+    os.makedirs(args.save_dir, exist_ok=True)
+    save_path = os.path.join(args.save_dir, "evaluation_results.json")
+    with open(save_path, "w") as f:
         json.dump(results, f, indent=2)
-    print(f"Results saved to {args.output}")
+    print(f"Results saved to {save_path}")

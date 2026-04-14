@@ -1,16 +1,16 @@
 #!/bin/bash
-#SBATCH -J report_gen_zeroshot
+#SBATCH -J graph_rag_report_gen
 #SBATCH -p gpu
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=32G
 #SBATCH --time=03:00:00
-#SBATCH --output=slurm/logs/report_gen_zeroshot/%x_%j.out
-#SBATCH --error=slurm/logs/report_gen_zeroshot/%x_%j.out
+#SBATCH --output=slurm/logs/graph_rag_report_gen/%x_%j.out
+#SBATCH --error=slurm/logs/graph_rag_report_gen/%x_%j.out
 #SBATCH --chdir=/gs/gsfs0/shared-lab/duong-lab/VLM_graphrag
 
 set -euo pipefail
-mkdir -p slurm/logs/report_gen_zeroshot
+mkdir -p slurm/logs/graph_rag_report_gen
 
 echo "[$(date)] Job $SLURM_JOB_ID on $(hostname)"
 echo "CWD=$(pwd)"
@@ -42,15 +42,19 @@ PY
 
 # -------- run naming / outputs --------
 RUN_ID=${SLURM_JOB_ID}
-SAVE_DIR="artifacts/report_gen_zeroshot/${RUN_ID}"
+SAVE_DIR="artifacts/graph_rag_report_gen/${RUN_ID}"
 mkdir -p "$SAVE_DIR"
 
-python -u scripts/10A_zeroshot_report_generation.py \
+python -u scripts/13_graphrag_report_generation.py \
   --mimic_cxr_jpg_root "/gs/gsfs0/shared-lab/duong-lab/MIMIC" \
   --biomedclip_embedding_dir "artifacts/embeddings/biomedclip" \
   --split "test" \
   --num_workers 8 \
   --save_dir "$SAVE_DIR" \
   --max_new_tokens 512 \
-  --limit 1000
+  --k_faiss 3 \
+  --k_graph 3 \
+  --graph_path "artifacts/05_create_cooccurrence_graph/26237587/cooccurrence_graph.json" \
+  --limit 100
+
 echo "[$(date)] Done."
